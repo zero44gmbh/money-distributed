@@ -1,8 +1,10 @@
+# typed: true
 # frozen_string_literal: true
 
 require 'rspec'
-require 'timecop'
+require 'concurrent-ruby'
 require 'money-distributed'
+require 'timecop'
 
 RSpec.configure do |c|
   c.order = :random

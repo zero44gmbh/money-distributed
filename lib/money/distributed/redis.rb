@@ -1,38 +1,49 @@
+# typed: strict
 # frozen_string_literal: true
-
-require 'redis'
-require 'connection_pool'
 
 class Money
   module Distributed
     # Wrapper over different parameters that can be provided for redis
     class Redis
+      extend T::Sig
+
+      sig do
+        params(
+          redis: T.any(::Redis, ConnectionPool, T::Hash[T.untyped, T.untyped], Proc),
+        ).void
+      end
       def initialize(redis)
-        @redis_proc = build_redis_proc(redis)
+        @redis_proc = T.let(build_redis_proc(redis), Proc)
       end
 
+      sig do
+        params(
+          block: T.proc.params(redis_or_similar: T.untyped).returns(T.untyped),
+        ).returns(T.untyped)
+      end
       def exec(&block)
         @redis_proc.call(&block)
       end
 
-      private
-
-      # rubocop: disable Metrics/MethodLength
-      def build_redis_proc(redis)
+      sig do
+        params(
+          redis: T.any(::Redis, ConnectionPool, T::Hash[T.untyped, T.untyped], Proc),
+        ).returns(Proc)
+      end
+      private def build_redis_proc(redis)
         case redis
         when ::Redis
           proc { |&b| b.call(redis) }
         when ConnectionPool
-          proc { |&b| redis.with { |r| b.call(r) } }
+          proc { |&b| redis.with { b.call(_1) } }
         when Hash
           build_redis_proc(::Redis.new(redis))
         when Proc
           redis
         else
-          raise ArgumentError, 'Redis, ConnectionPool, Hash or Proc is required'
+          T.absurd(redis)
         end
       end
-      # rubocop: enable Metrics/MethodLength
     end
   end
 end
